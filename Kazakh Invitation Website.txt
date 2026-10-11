@@ -1,0 +1,449 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Heart, 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  Volume2, 
+  VolumeX, 
+  Sparkles, 
+  Flower2, 
+  Mail, 
+  ChevronDown, 
+  Navigation, 
+  PartyPopper,
+  Star,
+  Music
+} from 'lucide-react';
+
+export default function App() {
+  const [isOpened, setIsOpened] = useState(false);
+  const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [eventPassed, setEventPassed] = useState(false);
+  
+  const audioCtxRef = useRef(null);
+  const isPlayingRef = useRef(false);
+  const timeoutIdRef = useRef(null);
+
+  useEffect(() => {
+    // Target: October 17, 2026, 14:00:00
+    const targetDate = new Date('2026-10-17T14:00:00').getTime();
+
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const difference = targetDate - now;
+
+      if (difference <= 0) {
+        setEventPassed(true);
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      } else {
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+        setTimeLeft({ days, hours, minutes, seconds });
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Web Audio Polyphonic Festive Waltz Player matching the uploaded song vibe
+  useEffect(() => {
+    if (!isPlayingMusic) {
+      isPlayingRef.current = false;
+      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+      return;
+    }
+
+    isPlayingRef.current = true;
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContext();
+      audioCtxRef.current = ctx;
+
+      // Festive Kazakh waltz cheerful melody notes (frequencies in Hz)
+      // A minor / C major cheerful upbeat festive motif
+      const notes = {
+        C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, 
+        G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25,
+        D5: 587.33, E5: 659.25, G5: 783.99
+      };
+
+      // Waltz melody sequence: [frequency, duration in ms]
+      const melody = [
+        [notes.E4, 250], [notes.G4, 250], [notes.C5, 500],
+        [notes.B4, 250], [notes.A4, 250], [notes.G4, 500],
+        [notes.A4, 250], [notes.B4, 250], [notes.C5, 500],
+        [notes.D5, 250], [notes.C5, 250], [notes.B4, 500],
+        [notes.C5, 250], [notes.E5, 250], [notes.G5, 500],
+        [notes.F5, 250], [notes.E5, 250], [notes.D5, 500],
+        [notes.C5, 330], [notes.B4, 330], [notes.A4, 330],
+        [notes.G4, 1000]
+      ];
+
+      // Accompaniment chords for the waltz bounce (oom-pah-pah)
+      const chords = [
+        [[notes.C4, notes.E4, notes.G4], 750],
+        [[notes.F4, notes.A4, notes.C5], 750],
+        [[notes.G4, notes.B4, notes.D5], 750],
+        [[notes.C4, notes.E4, notes.G4], 750]
+      ];
+
+      let noteIndex = 0;
+      let chordIndex = 0;
+
+      const playStep = () => {
+        if (!isPlayingRef.current || !audioCtxRef.current) return;
+
+        // Play melody note
+        const [freq, dur] = melody[noteIndex % melody.length];
+        playTone(ctx, freq, dur / 1000, 'sine', 0.12);
+
+        // Play chord every 3 melody steps (waltz rhythm)
+        if (noteIndex % 3 === 0) {
+          const [chordFreqs] = chords[chordIndex % chords.length];
+          chordFreqs.forEach(f => playTone(ctx, f * 0.5, 0.4, 'triangle', 0.08));
+          chordIndex++;
+        }
+
+        noteIndex++;
+        const nextTime = dur;
+        timeoutIdRef.current = setTimeout(playStep, nextTime);
+      };
+
+      playStep();
+
+    } catch (e) {
+      console.error("Audio error:", e);
+    }
+
+    return () => {
+      isPlayingRef.current = false;
+      if (timeoutIdRef.current) clearTimeout(timeoutIdRef.current);
+    };
+  }, [isPlayingMusic]);
+
+  const playTone = (ctx, freq, duration, type = 'sine', volume = 0.1) => {
+    try {
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch (err) {}
+  };
+
+  const toggleMusic = () => {
+    setIsPlayingMusic(!isPlayingMusic);
+  };
+
+  const handleOpenInvitation = () => {
+    setIsOpened(true);
+    setTimeout(() => {
+      const section2 = document.getElementById('invitation-section');
+      if (section2) {
+        section2.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 500);
+  };
+
+  const openMap = () => {
+    window.open('https://www.google.com/maps/search/?api=1&query=Шоғы+батыр+көшесі+118В', '_blank');
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FAF8F5] text-[#4A3B32] font-serif selection:bg-[#F3E5AB] selection:text-[#5A4538] relative overflow-x-hidden">
+      
+      {/* Floating Petals & Gold Sparkles background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-50">
+        {[...Array(22)].map((_, i) => (
+          <div 
+            key={i} 
+            className="absolute animate-float text-[#D4AF37]"
+            style={{
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              animationDuration: `${5 + (i % 6)}s`,
+              animationDelay: `${i * 0.5}s`,
+              fontSize: `${14 + (i % 12)}px`
+            }}
+          >
+            {i % 3 === 0 ? '🌸' : i % 3 === 1 ? '✨' : '🌹'}
+          </div>
+        ))}
+      </div>
+
+      {/* Floating Music Toggle Button */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-center gap-3">
+        <button 
+          onClick={toggleMusic}
+          className="bg-white/95 backdrop-blur-md border-2 border-[#D4AF37] text-[#8C6D4F] p-4 rounded-full shadow-2xl hover:bg-[#FDFBF7] transition-all duration-300 hover:scale-110 flex items-center justify-center group animate-pulse"
+          title={isPlayingMusic ? "Музыканы өшіру" : "Музыканы қосу"}
+        >
+          {isPlayingMusic ? <Volume2 className="w-6 h-6 text-[#D4AF37] animate-bounce" /> : <VolumeX className="w-6 h-6 text-gray-400" />}
+        </button>
+      </div>
+
+      {/* SECTION 1 — ANIMATED INTRODUCTION */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 py-16 text-center bg-gradient-to-b from-[#FDFBF7] via-[#FAF8F5] to-[#F3EFEA] border-b border-[#E8DFC8]">
+        <div className="absolute top-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 text-[#D4AF37] text-xs tracking-widest uppercase font-semibold">
+          <Sparkles className="w-4 h-4 animate-spin" />
+          <span>Салтанатты шақыру</span>
+          <Sparkles className="w-4 h-4 animate-spin" />
+        </div>
+
+        <div className="max-w-3xl mx-auto space-y-8 z-10 animate-fade-in-up">
+          <div className="inline-block p-4 rounded-full bg-white/90 shadow-lg border border-[#D4AF37]/50 mb-2">
+            <Flower2 className="w-14 h-14 text-[#D4AF37] animate-bounce" />
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-wide text-[#3D2E25] uppercase leading-tight font-serif drop-shadow-md">
+            “10-ШЫ АЙНАЛМАҚҚА ШАҚЫРУ”
+          </h1>
+
+          <div className="w-36 h-0.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent mx-auto my-4"></div>
+
+          <p className="text-2xl sm:text-3xl text-[#7A6150] italic font-light tracking-wide">
+            “Ардақты абысындар!”
+          </p>
+
+          <div className="pt-6">
+            <button
+              onClick={handleOpenInvitation}
+              className={`relative group px-9 py-4 bg-gradient-to-r from-[#D4AF37] via-[#E6CA65] to-[#D4AF37] text-white font-medium rounded-full shadow-2xl hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-1 overflow-hidden border border-[#FFF2C2] ${isOpened ? 'scale-105 ring-4 ring-[#D4AF37]/40' : ''}`}
+            >
+              <span className="absolute inset-0 w-full h-full bg-white/25 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
+              <span className="relative flex items-center gap-3 text-lg tracking-wider font-semibold">
+                <span>Шақыруды ашу ♡</span>
+                <Mail className="w-5 h-5 animate-pulse" />
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce text-[#A68A71]">
+          <ChevronDown className="w-7 h-7" />
+        </div>
+      </section>
+
+      {/* SECTION 2 — WARM INVITATION */}
+      <section id="invitation-section" className="py-24 px-6 max-w-4xl mx-auto text-center relative">
+        <div className="absolute top-10 left-6 text-[#D4AF37]/40 text-4xl">⚜️</div>
+        <div className="absolute bottom-10 right-6 text-[#D4AF37]/40 text-4xl">⚜️</div>
+
+        <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 sm:p-14 shadow-2xl border border-[#E8DFC8] relative overflow-hidden transition-all duration-700 hover:shadow-3xl">
+          <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#D4AF37] via-[#F3E5AB] to-[#D4AF37]"></div>
+
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 rounded-full bg-[#FAF5EE] border border-[#D4AF37]/50 flex items-center justify-center shadow-inner">
+              <Heart className="w-8 h-8 text-[#C58B93] fill-current animate-pulse" />
+            </div>
+          </div>
+
+          <div className="space-y-6 text-lg sm:text-xl text-[#5C4A3E] leading-relaxed font-serif whitespace-pre-line">
+            <p className="font-bold text-2xl sm:text-3xl text-[#3D2E25]">
+              Ардақты абысындар!
+            </p>
+            <p>
+              Сіздерді ақ дастархан басында бас қосып, әдемі әңгіме-дүкен құрып, бір күліп, бір сырласып, көңілді уақыт өткізуге арналған 10-шы Айналмақ отырысына шын жүректен шақырамын!
+            </p>
+            <p className="font-semibold text-[#8C6D4F] pt-2">
+              Бас қосуымыз берекелі, жүздесуімыз қуанышты болсын!
+            </p>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-[#F0E6D2] flex justify-center items-center gap-2 text-[#D4AF37]">
+            <Star className="w-4 h-4 fill-current" />
+            <Star className="w-5 h-5 fill-current" />
+            <Star className="w-4 h-4 fill-current" />
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 3 — EVENT DETAILS */}
+      <section className="py-16 px-6 max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#3D2E25] font-serif">Мәліметтер</h2>
+          <p className="text-[#8C6D4F] mt-2">Кездесетін уақыт пен мекенжай</p>
+          <div className="w-24 h-0.5 bg-[#D4AF37] mx-auto mt-4"></div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Date Card */}
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 text-center shadow-xl border border-[#E8DFC8] transform transition-transform hover:-translate-y-2 duration-300 group">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#FAF5EE] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-white transition-colors duration-300 shadow-sm">
+              <Calendar className="w-7 h-7" />
+            </div>
+            <h3 className="text-sm font-semibold tracking-wider text-[#A68A71] uppercase mb-1">Күні</h3>
+            <p className="text-2xl font-bold text-[#3D2E25]">17 қазан</p>
+          </div>
+
+          {/* Time Card */}
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 text-center shadow-xl border border-[#E8DFC8] transform transition-transform hover:-translate-y-2 duration-300 group">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#FAF5EE] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-white transition-colors duration-300 shadow-sm">
+              <Clock className="w-7 h-7" />
+            </div>
+            <h3 className="text-sm font-semibold tracking-wider text-[#A68A71] uppercase mb-1">Уақыты</h3>
+            <p className="text-2xl font-bold text-[#3D2E25]">14:00</p>
+          </div>
+
+          {/* Address Card */}
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 text-center shadow-xl border border-[#E8DFC8] transform transition-transform hover:-translate-y-2 duration-300 group">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#FAF5EE] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37] group-hover:bg-[#D4AF37] group-hover:text-white transition-colors duration-300 shadow-sm">
+              <MapPin className="w-7 h-7" />
+            </div>
+            <h3 className="text-sm font-semibold tracking-wider text-[#A68A71] uppercase mb-1">Мекенжайы</h3>
+            <p className="text-xl font-bold text-[#3D2E25]">Шоғы батыр көшесі, 118В</p>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 4 — BEAUTIFUL DECORATIVE GALLERY */}
+      <section className="py-20 px-6 bg-gradient-to-r from-[#F3EFEA] via-[#FAF8F5] to-[#F3EFEA] border-y border-[#E8DFC8] my-12 relative overflow-hidden">
+        <div className="max-w-4xl mx-auto text-center space-y-6 relative z-10">
+          <div className="inline-block p-3 rounded-full bg-white shadow-sm border border-[#D4AF37]">
+            <Sparkles className="w-8 h-8 text-[#D4AF37]" />
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#3D2E25] font-serif">
+            Салтанат пен Жылулық
+          </h2>
+          <p className="text-lg text-[#7A6150] max-w-2xl mx-auto leading-relaxed">
+            Әрбір отырыс — біздің ортақ қуанышымыз, шаңырағымыздың шаттығы мен сыйластығымыздың айғағы.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6">
+            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-[#E8DFC8] shadow-md hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">🌹</div>
+              <h4 className="font-semibold text-lg text-[#3D2E25] mb-1">Нәзіктік</h4>
+              <p className="text-sm text-[#7A6150]">Шынайы сезім мен сыйластық ортасы</p>
+            </div>
+            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-[#E8DFC8] shadow-md hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">✨</div>
+              <h4 className="font-semibold text-lg text-[#3D2E25] mb-1">Мереке</h4>
+              <p className="text-sm text-[#7A6150]">Көңілді отырыс пен естеліктер</p>
+            </div>
+            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl border border-[#E8DFC8] shadow-md hover:shadow-xl transition-shadow">
+              <div className="text-3xl mb-3">🌸</div>
+              <h4 className="font-semibold text-lg text-[#3D2E25] mb-1">Береке</h4>
+              <p className="text-sm text-[#7A6150]">Ақ дастархан мен жақсы лебіздер</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 5 — COUNTDOWN */}
+      <section className="py-16 px-6 max-w-4xl mx-auto text-center">
+        <h2 className="text-3xl sm:text-4xl font-bold text-[#3D2E25] font-serif mb-2">Кездесуге қалған уақыт</h2>
+        <p className="text-[#8C6D4F] mb-10">Қуанышты сәтті асыға күтеміз</p>
+
+        {eventPassed ? (
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-8 shadow-xl border border-[#D4AF37]">
+            <p className="text-2xl font-bold text-[#D4AF37]">Кездесу күні келіп жетті! Хош келдіңіздер! 🎉</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-[#E8DFC8]">
+              <span className="block text-3xl sm:text-4xl font-bold text-[#3D2E25]">{timeLeft.days}</span>
+              <span className="text-xs sm:text-sm text-[#A68A71] uppercase tracking-wider mt-1 block">Күн</span>
+            </div>
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-[#E8DFC8]">
+              <span className="block text-3xl sm:text-4xl font-bold text-[#3D2E25]">{timeLeft.hours}</span>
+              <span className="text-xs sm:text-sm text-[#A68A71] uppercase tracking-wider mt-1 block">Сағат</span>
+            </div>
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-[#E8DFC8]">
+              <span className="block text-3xl sm:text-4xl font-bold text-[#3D2E25]">{timeLeft.minutes}</span>
+              <span className="text-xs sm:text-sm text-[#A68A71] uppercase tracking-wider mt-1 block">Минут</span>
+            </div>
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-[#E8DFC8]">
+              <span className="block text-3xl sm:text-4xl font-bold text-[#3D2E25]">{timeLeft.seconds}</span>
+              <span className="text-xs sm:text-sm text-[#A68A71] uppercase tracking-wider mt-1 block">Секунд</span>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* SECTION 6 — LOCATION */}
+      <section className="py-16 px-6 max-w-3xl mx-auto text-center">
+        <div className="bg-white/95 backdrop-blur-md rounded-3xl p-8 sm:p-12 shadow-2xl border border-[#E8DFC8] space-y-6">
+          <div className="w-16 h-16 mx-auto rounded-full bg-[#FAF5EE] border border-[#D4AF37]/50 flex items-center justify-center text-[#D4AF37]">
+            <Navigation className="w-8 h-8" />
+          </div>
+          
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#3D2E25] font-serif">Мекенжай</h2>
+          
+          <p className="text-xl text-[#5C4A3E] font-medium">
+            Шоғы батыр көшесі, 118В
+          </p>
+
+          <div className="pt-2">
+            <button
+              onClick={openMap}
+              className="px-8 py-3.5 bg-gradient-to-r from-[#D4AF37] via-[#E6CA65] to-[#D4AF37] text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 inline-flex items-center gap-3"
+            >
+              <MapPin className="w-5 h-5" />
+              <span>Мекенжайды ашу</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 7 — FINAL GREETING */}
+      <section className="py-24 px-6 text-center bg-gradient-to-t from-[#F3EFEA] via-[#FAF8F5] to-[#FAF8F5] border-t border-[#E8DFC8] relative overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none opacity-20 flex justify-center items-center">
+          <PartyPopper className="w-96 h-96 text-[#D4AF37]" />
+        </div>
+
+        <div className="max-w-3xl mx-auto space-y-6 relative z-10">
+          <div className="inline-block p-4 rounded-full bg-white shadow-md border border-[#D4AF37] mb-2">
+            <Heart className="w-10 h-10 text-[#C58B93] fill-current animate-pulse" />
+          </div>
+
+          <h2 className="text-2xl sm:text-4xl font-bold text-[#3D2E25] font-serif leading-snug">
+            “Ақ дастарханымыздың қадірлі қонағы болыңыздар! ❤️”
+          </h2>
+
+          <p className="text-xl sm:text-2xl text-[#8C6D4F] italic font-light pt-2">
+            “Кездескенше, аяулы абысындар! 🌸”
+          </p>
+
+          <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent mx-auto my-6"></div>
+
+          <p className="text-sm text-[#A68A71] tracking-widest uppercase">
+            10-шы Айналмақ отырысы • 2026
+          </p>
+        </div>
+      </section>
+
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes float {
+          0% { transform: translateY(0px) rotate(0deg); opacity: 0.8; }
+          50% { transform: translateY(-20px) rotate(10deg); opacity: 1; }
+          100% { transform: translateY(0px) rotate(0deg); opacity: 0.8; }
+        }
+        .animate-float {
+          animation: float 5s ease-in-out infinite;
+        }
+      `}</style>
+
+    </div>
+  );
+}
